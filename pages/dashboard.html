@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dashboard - Visitas</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../css/styles.css" rel="stylesheet">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">Visitas</a>
+    <div class="d-flex">
+      <button id="btnClients" class="btn btn-outline-secondary me-2">Clientes</button>
+      <button id="btnVisits" class="btn btn-outline-secondary me-2">Visitas</button>
+      <button id="btnAdminUsers" class="btn btn-outline-secondary me-2">Usuarios</button>
+      <button id="btnLogout" class="btn btn-danger">Cerrar sesión</button>
+    </div>
+  </div>
+</nav>
+<div class="container mt-4">
+  <h4>Panel</h4>
+  <p>Bienvenido. Usa la navegación para acceder a módulos.</p>
+
+  <div class="row mt-3">
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title">Clientes</h6>
+          <p class="card-text">Gestiona clientes y sus coordenadas.</p>
+          <button id="goClients" class="btn btn-primary">Ir a Clientes</button>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title">Visitas Hoy</h6>
+          <p class="card-text">Revisa las visitas programadas para hoy.</p>
+          <button id="goVisits" class="btn btn-primary">Ir a Visitas</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/api.js"></script>
+<script>
+  if (!sessionStorage.getItem('jwt')) window.location = '../index.html';
+
+  document.getElementById('btnLogout').addEventListener('click', ()=> { sessionStorage.clear(); window.location='../index.html'; });
+  document.getElementById('btnClients').addEventListener('click', ()=> window.location='clients.html');
+  document.getElementById('btnVisits').addEventListener('click', ()=> window.location='visits.html');
+  document.getElementById('goClients').addEventListener('click', ()=> window.location='clients.html');
+  document.getElementById('goVisits').addEventListener('click', ()=> window.location='visits.html');
+  document.getElementById('btnAdminUsers').addEventListener('click', ()=> { window.location='admin-users.html'; });
+</script>
+</body>
+</html>

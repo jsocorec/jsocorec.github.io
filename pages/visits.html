@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Visitas</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="../css/styles.css" rel="stylesheet" />
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">Visitas</a>
+    <div class="d-flex">
+      <button id="btnDashboard" class="btn btn-outline-secondary me-2">Dashboard</button>
+      <button id="btnClients" class="btn btn-outline-secondary me-2">Clientes</button>
+      <button id="btnLogout" class="btn btn-danger">Cerrar sesión</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Visitas</h4>
+    <div>
+      <button id="btnRefresh" class="btn btn-secondary">Refrescar</button>
+      <button id="btnNew" class="btn btn-primary">Nueva Visita</button>
+    </div>
+  </div>
+
+  <div id="alert-placeholder"></div>
+
+  <table class="table table-striped" id="visitsTable">
+    <thead>
+      <tr><th>ID</th><th>Cliente</th><th>Técnico</th><th>Programada</th><th>Estado</th><th>Acciones</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Modal crear/editar visita -->
+<div class="modal fade" id="visitModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="visitForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="visitModalTitle">Visita</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="visitId">
+          <div class="mb-3">
+            <label class="form-label">Cliente</label>
+            <select id="visitClientId" class="form-select" required>
+              <option value="">-- seleccionar cliente --</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Técnico</label>
+            <select id="visitTechnicianId" class="form-select">
+              <option value="">-- seleccionar técnico --</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Supervisor</label>
+            <select id="visitSupervisorId" class="form-select">
+              <option value="">-- seleccionar supervisor --</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Fecha y hora</label>
+            <input id="visitScheduledAt" type="datetime-local" class="form-control" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notas</label>
+            <textarea id="visitNotes" class="form-control"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script src="../js/api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(async function(){
+  if (!sessionStorage.getItem('jwt')) { window.location='../index.html'; return; }
+
+  const tbody = document.querySelector('#visitsTable tbody');
+  const alertPlace = document.getElementById('alert-placeholder');
+  const visitModalEl = document.getElementById('visitModal');
+  const bsVisitModal = new bootstrap.Modal(visitModalEl);
+
+  document.getElementById('btnLogout').addEventListener('click', ()=> { sessionStorage.clear(); window.location='../index.html'; });
+  document.getElementById('btnDashboard').addEventListener('click', ()=> window.location='dashboard.html');
+  document.getElementById('btnClients').addEventListener('click', ()=> window.location='clients.html');
+  document.getElementById('btnRefresh').addEventListener('click', loadVisits);
+  document.getElementById('btnNew').addEventListener('click', ()=> openModal());
+
+  // focus after modal shown to avoid aria-hidden warning
+  visitModalEl.addEventListener('shown.bs.modal', ()=> {
+    const first = document.getElementById('visitClientId');
+    if (first) first.focus();
+  });
+
+  function showAlert(msg,type='info'){ alertPlace.innerHTML = `<div class="alert alert-${type}">${msg}</div>`; setTimeout(()=> alertPlace.innerHTML='',3500); }
+
+  async function loadVisits(){
+    try {
+      const visits = await apiGet('/visits');
+      renderTable(visits);
+    } catch (e) { showAlert(e.message || e, 'danger'); }
+  }
+
+  function renderTable(visits){
+    tbody.innerHTML = visits.map(v=>{
+      const estado = v.checkOut ? 'Finalizada' : (v.checkIn ? 'En sitio' : 'Pendiente');
+      return `<tr>
+        <td>${v.id}</td>
+        <td>${v.clientId}</td>
+        <td>${v.technicianId || ''}</td>
+        <td>${v.scheduledAt ? v.scheduledAt.replace('T',' ') : ''}</td>
+        <td>${estado}</td>
+        <td>
+          <button class="btn btn-sm btn-info btn-detail" data-id="${v.id}">Detalle</button>
+          <button class="btn btn-sm btn-primary btn-edit" data-id="${v.id}">Editar</button>
+          <button class="btn btn-sm btn-success btn-checkin" data-id="${v.id}">Ingreso</button>
+          <button class="btn btn-sm btn-warning btn-checkout" data-id="${v.id}">Egreso</button>
+          <button class="btn btn-sm btn-danger btn-delete" data-id="${v.id}">Borrar</button>
+        </td>
+      </tr>`;
+    }).join('');
+    document.querySelectorAll('.btn-detail').forEach(b=>b.addEventListener('click', e=> window.location=`visit-detail.html?id=${e.target.dataset.id}`));
+    document.querySelectorAll('.btn-edit').forEach(b=> b.addEventListener('click', e=> editVisit(e.target.dataset.id)));
+    document.querySelectorAll('.btn-delete').forEach(b=> b.addEventListener('click', e=> deleteVisit(e.target.dataset.id)));
+    document.querySelectorAll('.btn-checkin').forEach(b=> b.addEventListener('click', e=> quickCheck('in', e.target.dataset.id)));
+    document.querySelectorAll('.btn-checkout').forEach(b=> b.addEventListener('click', e=> quickCheck('out', e.target.dataset.id)));
+  }
+
+  // Helpers to load options
+  async function loadSelectOptions() {
+    try {
+      const clients = await apiGet('/clients');
+      const clientSel = document.getElementById('visitClientId');
+      clientSel.innerHTML = `<option value="">-- seleccionar cliente --</option>` +
+        clients.map(c => `<option value="${c.id}">${escapeHtml(c.name || c.id)}</option>`).join('');
+    } catch (e) {
+      console.warn('No se pudieron cargar clientes:', e);
+    }
+
+    try {
+      const users = await apiGet('/auth/users');
+      console.log('users from /auth/users:', users);
+      const techSel = document.getElementById('visitTechnicianId');
+      const supSel = document.getElementById('visitSupervisorId');
+      techSel.innerHTML = `<option value="">-- seleccionar técnico --</option>`;
+      supSel.innerHTML = `<option value="">-- seleccionar supervisor --</option>`;
+      users.forEach(u => {
+        const roleRaw = (u.role || '').toString();
+        const role = roleRaw.trim().toUpperCase();
+        const label = (u.username || u.name || u.id) + (role ? ` (${role})` : '');
+        if (role.includes('TECH') || role.includes('TÉCN') || role.includes('TÉCNICO')) {
+          techSel.insertAdjacentHTML('beforeend', `<option value="${u.id}">${escapeHtml(label)}</option>`);
+        }
+        if (role.includes('SUPERV') || role.includes('JEFE') || role.includes('SUPERVISOR')) {
+          supSel.insertAdjacentHTML('beforeend', `<option value="${u.id}">${escapeHtml(label)}</option>`);
+        }
+        if (!role && (String(u.username||'').toLowerCase().includes('tech'))) {
+          techSel.insertAdjacentHTML('beforeend', `<option value="${u.id}">${escapeHtml(label)}</option>`);
+        }
+        if (!role && (String(u.username||'').toLowerCase().includes('super'))) {
+          supSel.insertAdjacentHTML('beforeend', `<option value="${u.id}">${escapeHtml(label)}</option>`);
+        }
+      });
+    } catch (e) {
+      console.warn('No se pudieron cargar usuarios:', e);
+    }
+  }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  function toLocalDatetimeInput(value) {
+    if (!value) return '';
+    const d = new Date(value);
+    const pad = n => String(n).padStart(2,'0');
+    const yyyy = d.getFullYear();
+    const mm = pad(d.getMonth()+1);
+    const dd = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const min = pad(d.getMinutes());
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+  }
+
+  async function openModal(visit){
+    await loadSelectOptions();
+    document.getElementById('visitId').value = visit?.id || '';
+    document.getElementById('visitClientId').value = visit?.clientId || '';
+    document.getElementById('visitTechnicianId').value = visit?.technicianId || '';
+    document.getElementById('visitSupervisorId').value = visit?.supervisorId || '';
+    document.getElementById('visitScheduledAt').value = toLocalDatetimeInput(visit?.scheduledAt) || '';
+    document.getElementById('visitNotes').value = visit?.notes || '';
+    document.getElementById('visitModalTitle').innerText = visit ? 'Editar Visita' : 'Nueva Visita';
+    bsVisitModal.show();
+  }
+
+  document.getElementById('visitForm').addEventListener('submit', async (evt)=>{
+    evt.preventDefault();
+    const id = document.getElementById('visitId').value;
+    const payload = {
+      clientId: parseInt(document.getElementById('visitClientId').value) || null,
+      technicianId: parseInt(document.getElementById('visitTechnicianId').value) || null,
+      supervisorId: parseInt(document.getElementById('visitSupervisorId').value) || null,
+      scheduledAt: document.getElementById('visitScheduledAt').value ? document.getElementById('visitScheduledAt').value : null,
+      notes: document.getElementById('visitNotes').value
+    };
+    try {
+      if (id) {
+        await apiPut('/visits/' + id, payload);
+        showAlert('Visita actualizada','success');
+      } else {
+        await apiPost('/visits', payload);
+        showAlert('Visita creada','success');
+      }
+      bsVisitModal.hide();
+      loadVisits();
+    } catch (e) {
+      showAlert(e.message,'danger');
+    }
+  });
+
+  async function editVisit(id){
+    try {
+      const v = await apiGet('/visits/' + id);
+      openModal(v);
+    } catch (e) { showAlert(e.message,'danger'); }
+  }
+
+  async function deleteVisit(id){
+    if (!confirm('Borrar visita ' + id + '?')) return;
+    try {
+      await apiDelete('/visits/' + id);
+      showAlert('Visita borrada','success');
+      loadVisits();
+    } catch (e) { showAlert(e.message,'danger'); }
+  }
+
+  async function quickCheck(kind, id){
+    if (!confirm((kind==='in'?'Registrar ingreso':'Registrar egreso') + ' para visita ' + id + '?')) return;
+    try {
+      const visit = await apiGet('/visits/' + id);
+      const coords = await getCurrentCoords();
+      if (kind==='in') {
+        visit.checkIn = new Date().toISOString();
+        if (coords) { visit.checkInLat = coords.lat; visit.checkInLng = coords.lng; }
+      } else {
+        visit.checkOut = new Date().toISOString();
+        if (coords) { visit.checkOutLat = coords.lat; visit.checkOutLng = coords.lng; }
+      }
+      await apiPut('/visits/' + id, visit);
+      showAlert('Registro guardado','success');
+      loadVisits();
+    } catch (e) { showAlert(e.message,'danger'); }
+  }
+
+  function getCurrentCoords(){
+    return new Promise((resolve)=> {
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(pos=>{
+        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      }, ()=> resolve(null), { timeout: 8000 });
+    });
+  }
+
+  // carga inicial
+  loadVisits();
+})();
+</script>
+</body>
+</html>
+
