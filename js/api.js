@@ -1,5 +1,5 @@
 //const API_BASE = (window.__env && window.__env.API_BASE_URL) ? window.__env.API_BASE_URL : 'http://localhost:8081';
-const API_BASE = (window.__env && window.__env.API_BASE_URL) ? window.__env.API_BASE_URL : 'http://Ms-clientes-visitas-env2.eba-ie2e5n2t.us-east-1.elasticbeanstalk.com';
+const API_BASE = (window.__env && window.__env.API_BASE_URL) ? window.__env.API_BASE_URL : 'https://Ms-clientes-visitas-env2.eba-ie2e5n2t.us-east-1.elasticbeanstalk.com';
 async function apiFetch(path, opts = {}) {
   const headers = opts.headers || {};
   headers['Content-Type'] = headers['Content-Type'] || 'application/json';
@@ -22,4 +22,5 @@ async function apiFetch(path, opts = {}) {
 async function apiGet(path) { return apiFetch(path, { method: 'GET' }); }
 async function apiPost(path, body) { return apiFetch(path, { method: 'POST', body: JSON.stringify(body) }); }
 async function apiPut(path, body) { return apiFetch(path, { method: 'PUT', body: JSON.stringify(body) }); }
+
 async function apiDelete(path) { return apiFetch(path, { method: 'DELETE' }); }
